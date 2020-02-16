@@ -1,0 +1,130 @@
+Bitcoin: A Peer-to-Peer Electronic Cash System
+    Satoshi Nakamoto 
+
+Blockchain 区块链
+UTXO(Unspent Transaction Outputs) 未花费的交易输出
+交易transaction
+
+论文:
+1.介绍
+    线上交易依赖第三方;    
+    交易都是可逆的(reversible),商家需要警惕客户.
+    欺诈不可避免,现金交易可以避免
+
+    基于密码证明(cryptographic proof)而不是信任第三方
+    在算法上无法逆转来保证卖方免受欺诈(Transactions that are computationally impractical to reverse would protect sellers from fraud)
+    常规托管机制可以保护买家(routine escrow mechanisms could easily be implemented to protect buyers)
+    使用对等分布式时间戳服务生成事务时间顺序计算证明来解决双花问题( a solution to the double-spending problem using a peer-to-peer distributed timestamp server to generate computational proof of the chronological order of transactions)
+    只要诚实节点多于攻击节点,就可以保证安全.(51%算力攻击)
+
+2.交易
+    使用电子签名链(blockchain)
+    加入公钥.使用私钥来分辨所有权.
+    避免双花问题:公布交易,让大部分节点同意这是第一个收到的
+3.timestamp server 时间戳服务
+    对之前的时间和现在时间进行hash
+4.Proof-of-Work
+    使用类似Adam Back's Hashcash的系统
+    例如SHA-256,是一系列0开始的.
+    通过执行单个hash来验证,需要指数级的工作量来验证数个0位
+
+    加入随机数(nonce)到hash中,直到结果的值满足0的个数.
+    后面的block链接后,想更改前面的block回重做后面的所有块.
+
+    工作量证明实质上是一个CPU一票.(Proof-of-work is essentially one-CPU-one-vote. )
+
+    多数决策由最长链决定,也是投入工作量最多的链.
+    如果诚实节点控制了大多数CPU,诚实链将快速成长并超过竞争链.
+    要修改过去的block,攻击者需要重做该block和后续的所有block并超越城市节点.(If a majority of CPU power is controlled by honest nodes, the honest chain will grow the fastest and outpace any competing chains. To modify a past block, an attacker would have to redo the proof-of-work of the block and all blocks after it and then catch up with and surpass the work of the honest nodes. )
+
+    因为硬件速度的提高和对运行节点的兴趣变化,工作量证明的难度由每小时块数移动平均值决定.生成速度过快,难度会增加.(To compensate for increasing hardware speed and varying interest in running nodes over time, the proof-of-work difficulty is determined by a moving average targeting an average number of blocks per hour. If they're generated too fast, the difficulty increases.)
+
+5.network
+    (1)新交易广播到所有节点
+    New transactions are broadcast to all nodes.
+    (2)每个节点将交易放入一个block中
+    Each node collects new transactions into a block. 
+    (3)每个节点为这个block寻找/算POW
+    Each node works on finding a difficult proof-of-work for its block.
+    (4)当一个节点找到POW后,广播到所有节点
+    When a node finds a proof-of-work, it broadcasts the block to all nodes.
+    (5)当所有交易有些且没花掉时,节点们才接受
+    Nodes accept the block only if all transactions in it are valid and not already spent.
+    (6)节点们通过使用上一个block的hash来新建下一个链上的block,来表示他们接受了这个block.
+    Nodes express their acceptance of the block by working on creating the next block in the chain, using the hash of the accepted block as the previous hash.
+
+    节点总是认为最长链是正确的并且在这上面扩展.如果节点收到不一样的版本,在第一个上面工作,保留第二个.如果第二个更长,切换到第二个上.
+
+    交易广播不需要到达所有节点,只要他们到达大多数节点,就可以很快进入blok了.
+    block广播允许丢失信息.如果节点没有收到block,他会在收到下一个块时意识到丢失了并请求.(hash验证不对,不能组成链)
+    New transaction broadcasts do not necessarily need to reach all nodes. As long as they reach many nodes, they will get into a block before long. Block broadcasts are also tolerant of dropped messages. If a node does not receive a block, it will request it when it receives the next block and realizes it missed one.
+
+6.incentive 激励措施
+    block的第一个交易是特殊交易( special transaction),由block的创造者所有.
+    增加了节点支持网络的动力,同时提供了分发初始coin进入流通中的方式,因为没有中央机构来证明(issue)他们.
+    花费是CPU时间和电量.(成本)
+
+    激励也可以是交易费.
+    如果交易的输出值小于输入值,差值就是交易费,加到包含交易的block的激励中.
+    一旦预定数量的coin进入流通,激励就可以完全转换为交易费,且没有通货膨胀.(因为POW成本?)
+    激励可以鼓励节点诚实.如果攻击者有更多的CPU算力,他要选择是通过拿回自己的付款来欺骗别人,还是继续生产新币.他会发现遵守规则更有利.(过于理想)
+    The incentive may help encourage nodes to stay honest. If a greedy attacker is able to assemble more CPU power than all the honest nodes, he would have to choose between using it to defraud people by stealing back his payments, or using it to generate new coins. He ought to find it more profitable to play by the rules, such rules that favour him with more new coins than everyone else combined, than to undermine the system and the validity of his own wealth.
+
+7.Reclaiming Disk Space 回收硬盘空间
+    当新交易埋在足够的block下后,之前已经花费的交易就可以丢弃来节省硬盘了.为了不破坏block的hash,交易hash在Merkle Tree中,只有根节点被block hash.旧block就可以砍掉树枝来压实block了,不存储内部hash.
+
+
+    假设 block header:80 bytes
+    每10分钟生成block: 80bytes*6*24*365 = 4.2MB每年
+    存储不成问题
+
+    Merkle Tree: 将所有交易信息hash后两两进行hash,最后得到一个最终hash值,Merkle root.
+
+    验证交易:得到交易的hash值,寻找Merkle tree中的参与hash的其他值,hash后得到结果,与block header记录的对照,如果一致,就证明被收录.(还是需要有硬盘保存交易数据的)
+
+    如今全部比特币交易信息需要大量空间,有一些大节点去保存全部的交易记录.一般用户不需要保存全部信息,用wallet即可.
+
+8.Simplified Payment Verification 简化付款验证
+    不需要完整网络节点就可验证付款.
+    用户只需要保留最长的POW链的block headers.知道确信自己有最长的链,之后获得交易与区块链接的Merkle分支.  他无法亲自检查交易,但是通过将交易链接到链中的某个位置,可以看到网络节点已接受的交易,并且之后新生成了block进一步确认网络已接受交易.
+
+    只要诚实节点控制网络,验证就可信.
+    但是如果被攻击者压制,验证就更容易受攻击.
+    策略:网络节点发现无效block时接受警报,提示用户软件下载完整的块并警告交易来验证不一致. 收到频繁付款的企业更可能会运行自己的节点来获得独立的安全性和更快的验证.
+
+9.Combining and Splitting Value 合并和分割价值
+    尽管可以单独处理coin,但处理每一分钱进行单独交易很麻烦.为了允许价值被分割和合并,交易包含多个输入和输出.
+    通常,
+    要么是 先前较大交易的单个输入,
+    要么是 合并了较小金额的多个输入. 
+    最多两个输出:
+        一个用于支付
+        一个用于找零(returning the change)(返还给付款人)
+    需要注意:扇出(fan-out)一个交易由多个交易决定,多个交易由更多交易决定,这不是问题. 永远不需要提取交易历史记录的完整独立副本.
+    
+    有UTXO自动计算怎么支付合理
+10.Privacy 隐私
+
+    公钥保持匿名.
+    公众可以看到某人给他人汇款,但没有信息可以将任何人链接到交易上.
+    类似证券交易,公开了单个交易的时间和规模(tape)给公众,但没有提到当事方.
+
+    每笔使用新的秘钥对,以防将其链接到公共所有者.多个输入交易仍然无法避免某些链接,这必然表明他们的输入是同一所有者拥有的.风险是如果秘钥被泄露,链接可能会揭示属于同一所有者的其他交易.
+
+    随机生成私钥,多次哈希生成公钥,base58编码生成比特币地址.无法逆转
+    私钥->公钥->比特币地址
+
+11.Calculations 计算
+    节点不会接受无效交易作为付款,城市节点永远不会接受包含他们的block
+    攻击者只能尝试更改自己的交易之一来取回花费的最近的资金.
+
+    诚实链和攻击链可以看成二项式随机游走(Binomial Random Walk),成功事件是诚实链扩展一个block,优势+1,失败事件是攻击链扩展一个block,差距-1
+    攻击者追上一个给定赤字的可能性是赌徒破产问题(a Gambler's Ruin problem).假设有无限的信用的赌徒从赤字开始,进行无数次尝试以达到收支平衡,可以计算出他达到收支平衡或赶上诚实链的可能性:
+    p = probability an honest node finds the next block
+    q = probability the attacker finds the next block
+    qz = probability the attacker will ever catch up from z blocks behind
+        qz=1 if p<=q
+        qz=(q/p)^z if p>q
+    如果p>q,可能性随着block数量的增加而呈指数下降.
+
+    6个块,一小时后就可以确定交易不可更改
